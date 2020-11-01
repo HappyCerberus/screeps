@@ -5,10 +5,18 @@ interface CreepMemory {
   role: string;
   room: string;
   working: boolean;
+  sourceId?: Id<Source>;
+}
+
+interface RoomMemory {
+  sources: string;
+  drillMap: string;
 }
 
 interface Memory {
   uuid: number;
+  sources: number[];
+  spawning: string;
   log: any;
 }
 
