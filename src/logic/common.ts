@@ -1,5 +1,6 @@
 import * as globals from "../globals"
 import { ResourceScheduler } from "../scheduler/resource"
+import { StructureResourceProvider } from "../scheduler/resource"
 
 export function harvest_logic(creep: Creep) {
     const source = creep.pos.findClosestByPath(FIND_SOURCES_ACTIVE);
@@ -14,7 +15,7 @@ export function drill_logic(creep: Creep, target: Id<Source>) {
     const source = Game.getObjectById(target);
     if (source) {
         if (creep.harvest(source) == ERR_NOT_IN_RANGE) {
-            creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' } });
+            creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' }, swampCost: 1 });
         }
     }
 }
@@ -95,8 +96,14 @@ export function pickup_resources_logic(creep: Creep) {
 export function scheduled_resources(creep: Creep, rs: ResourceScheduler) {
     const source = rs.claimResources(creep, creep.store.getFreeCapacity());
     if (source) {
-        if (creep.withdraw(source, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-            creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' } });
+        if ("resourceType" in source) {
+            if (creep.pickup(source as Resource<ResourceConstant>) === ERR_NOT_IN_RANGE) {
+                creep.moveTo(source as Resource<ResourceConstant>, { visualizePathStyle: { stroke: '#ffaa00' } });
+            }
+        } else {
+            if (creep.withdraw(source as StructureResourceProvider, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                creep.moveTo(source as StructureResourceProvider, { visualizePathStyle: { stroke: '#ffaa00' } });
+            }
         }
     } else {
         console.log(`Creep ${creep.id} failed to claim resource for work.`);
@@ -131,6 +138,15 @@ export function store_resources_logic(creep: Creep) {
     if (container) {
         if (creep.transfer(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
             creep.moveTo(container, { visualizePathStyle: { stroke: '#ffaa00' } });
+        }
+    }
+}
+
+export function store_resources_by_id_logic(creep: Creep, structure: Id<StructureStorage> | Id<StructureContainer>) {
+    let deposit = Game.getObjectById(structure) as Structure<STRUCTURE_CONTAINER> | Structure<STRUCTURE_STORAGE>;
+    if (deposit) {
+        if (creep.transfer(deposit, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+            creep.moveTo(deposit, { visualizePathStyle: { stroke: '#ffaa00' } });
         }
     }
 }

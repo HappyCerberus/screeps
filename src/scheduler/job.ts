@@ -46,14 +46,14 @@ export class JobScheduler {
 
         let structures = room.find(FIND_STRUCTURES);
         for (const structure of structures) {
-            if (isRefillJobStructure(structure) && this.refillJobs.length < globals.JOBS_REFILL_LIMIT) {
+            if (isRefillJobStructure(structure) && this.refillJobs.length < (room.memory.limits.jobsRefill as number)) {
                 this.refillJobs.push(new globals.Job("refill", structure));
             }
-            if (isRepairJobStructure(structure) && this.repairJobs.length < globals.JOBS_REPAIR_LIMIT) {
+            if (isRepairJobStructure(structure) && this.repairJobs.length < (room.memory.limits.jobsRepair as number)) {
                 this.repairJobs.push(new globals.Job("repair", structure));
             }
             if (isController(structure)) {
-                for (let i = 0; i < globals.UPGRADE_JOBS_PER_CONTROLLER; i++) {
+                for (let i = 0; i < (room.memory.limits.jobsUpgrade as number); i++) {
                     this.upgradeJobs.push(new globals.Job("upgrade", structure));
                 }
             }
@@ -61,7 +61,7 @@ export class JobScheduler {
 
         let constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
         for (const site of constructionSites) {
-            if (this.buildJobs.length < globals.JOBS_BUILD_LIMIT)
+            if (this.buildJobs.length < (room.memory.limits.jobsBuild as number))
                 this.buildJobs.push(new globals.Job("build", site));
         }
 
@@ -76,10 +76,13 @@ export class JobScheduler {
     claimJob(creep: Creep): globals.Job {
         let job: globals.Job | undefined = undefined;
 
+        /*
         if (this.sweeperJobs.length > 0) {
             job = this.sweeperJobs.pop();
             console.log(`Assigning sweeper job to creep ${creep.id}`);
-        } else if (this.refillJobs.length > 0) {
+        }
+        */
+        if (this.refillJobs.length > 0) {
             job = this.refillJobs.pop();
             console.log(`Assigning refill job to creep ${creep.id}`);
         } else if (this.buildJobs.length > 0) {
