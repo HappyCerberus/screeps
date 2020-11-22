@@ -1,3 +1,4 @@
+import { ControllerStateInfo } from "data/global";
 import * as globals from "../globals"
 import { ResourceScheduler } from "../scheduler/resource"
 import { StructureResourceProvider } from "../scheduler/resource"
@@ -43,6 +44,29 @@ export function build_logic(creep: Creep) : boolean {
     if (targets.length) {
         if (creep.build(targets[0]) == ERR_NOT_IN_RANGE) {
             creep.moveTo(targets[0], { visualizePathStyle: { stroke: '#ffffff' } });
+        }
+        return true;
+    }
+    return false;
+}
+
+export function disassemble_logic(creep: Creep): boolean {
+    let target: Structure | undefined;
+    if (creep.memory.enemyTarget) {
+        const b = Game.getObjectById(creep.memory.enemyTarget);
+        if (b) {
+            target = b;
+        }
+    } else {
+        const targets = creep.room.find(FIND_HOSTILE_SPAWNS);
+        if (targets.length) {
+            target = targets[0];
+        }
+    }
+
+    if (target) {
+        if (creep.dismantle(target) == ERR_NOT_IN_RANGE) {
+            creep.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
         }
         return true;
     }

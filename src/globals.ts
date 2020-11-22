@@ -7,6 +7,7 @@ export const PICKUP_MARGIN_GROUND = 50;
 
 export let rs: ResourceScheduler | undefined = undefined;
 
+export const me = "HappyCerberus";
 
 export class Job {
     constructor(public type: string,

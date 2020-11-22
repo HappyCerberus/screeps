@@ -21,3 +21,15 @@ export function deserializeMap<Key, Value>(rawData: string): Map<Key, Value> {
 export function serializeMap<Key, Value>(data: Map<Key, Value>): string {
     return JSON.stringify([...data]);
 }
+
+export function serializeArray<Type>(data: Array<Type>): string {
+    return JSON.stringify([...data]);
+}
+
+export function deserializeArray<Type>(rawData: string): Array<Type> {
+    try {
+        return new Array<Type>(JSON.parse(rawData));
+    } catch (err) {
+        return new Array<Type>();
+    }
+}

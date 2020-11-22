@@ -1,8 +1,9 @@
 import { memoryUsage } from "process";
 import * as globals from "../globals"
 import * as common from "./common"
+import * as globalData from "../data/global"
 
-export function run(creep: Creep, drillMap: Map<string, Id<Creep>>, spawning: Set<string>) {
+export function run(creep: Creep, empire: globalData.Global, drillMap: Map<string, Id<Creep>>) {
     if (creep.memory.sourceId === undefined) {
         console.log(`Fatal error, a drill with undefined sourceId : ${creep.name}.`);
         return;
@@ -12,7 +13,7 @@ export function run(creep: Creep, drillMap: Map<string, Id<Creep>>, spawning: Se
     const creepId = drillMap.get(sourceId.toString());
     if (creepId !== creep.id) {
         drillMap.set(sourceId.toString(), creep.id);
-        spawning.delete(creep.name);
+        empire.spawning.delete(creep.name);
     }
 
     common.drill_logic(creep, sourceId);
