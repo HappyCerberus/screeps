@@ -4,7 +4,7 @@ import { ControllerStateInfo } from "data/global";
 import { runInThisContext } from "vm";
 import { debounce, mapValues } from "lodash";
 import { doesNotMatch } from "assert";
-import { remoteSourceHasMiners } from "respawn";
+//import { remoteSourceHasMiners } from "respawn";
 
 type RefillEntityID = Id<StructureExtension> | Id<StructureTower> | Id<StructureSpawn>;
 type RepairEntityID = Id<Structure>;

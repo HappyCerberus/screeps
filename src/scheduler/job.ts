@@ -1,4 +1,6 @@
+import { initRoomMemory } from "data/lib";
 import * as globals from "../globals"
+import { RoomData } from "../data/room"
 
 function isRefillJobStructure(structure: AnyStructure): boolean {
     if (structure.structureType !== STRUCTURE_TOWER &&
@@ -43,6 +45,11 @@ export class JobScheduler {
         this.repairJobs = new Array<globals.Job>();
         this.upgradeJobs = new Array<globals.Job>();
         this.sweeperJobs = new Array<globals.Job>();
+
+        room.memory.limits = {
+            creepsWorkers: 4, jobsUpgrade: 4, jobsRepair: 2,
+            jobsBuild: 2, jobsRefill: 2, ...room.memory.limits
+        };
 
         let structures = room.find(FIND_STRUCTURES);
         for (const structure of structures) {

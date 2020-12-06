@@ -16,7 +16,7 @@ export function drill_logic(creep: Creep, target: Id<Source>) {
     const source = Game.getObjectById(target);
     if (source) {
         if (creep.harvest(source) == ERR_NOT_IN_RANGE) {
-            creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' }, swampCost: 1 });
+            creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' }/*, swampCost: 1*/ });
         }
     }
 }
@@ -52,10 +52,12 @@ export function build_logic(creep: Creep) : boolean {
 
 export function disassemble_logic(creep: Creep): boolean {
     let target: Structure | undefined;
+    console.log("Disassembler running.");
     if (creep.memory.enemyTarget) {
-        const b = Game.getObjectById(creep.memory.enemyTarget);
+        const b = Game.getObjectById(creep.memory.enemyTarget as Id<Structure>);
         if (b) {
             target = b;
+            console.log("Have enemy target.");
         }
     } else {
         const targets = creep.room.find(FIND_HOSTILE_SPAWNS);

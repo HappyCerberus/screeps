@@ -1,3 +1,8 @@
+export function initRoomMemory(room: string) {
+    if (Memory.rooms[room] !== undefined) return;
+    Memory.rooms[room] = {};
+}
+
 export function deserializeSet<Type>(rawData: string): Set<Type> {
     try {
         return new Set<Type>(JSON.parse(rawData));

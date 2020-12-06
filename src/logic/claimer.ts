@@ -5,12 +5,6 @@ import * as globalData from "../data/global"
 
 export function run(creep: Creep, empire: globalData.Global, claimerMap: Map<string, Id<Creep>>) {
     const room = creep.memory.room;
-    const creepId = claimerMap.get(room);
-    if (creepId !== creep.id) {
-        claimerMap.set(room, creep.id);
-        empire.spawning.delete(creep.name);
-    }
-
     const route = Game.map.findRoute(creep.room, creep.memory.room);
     if (route === -2) {
         console.log(`Failed to send claimer ${creep.id} to room ${creep.memory.room}`);
@@ -30,12 +24,12 @@ export function run(creep: Creep, empire: globalData.Global, claimerMap: Map<str
             return;
         }
 
-        if (empire.roomsToControl.has(creep.room.name)) {
+        if (Memory.rooms[creep.room.name].respawnManager?.desiredOwnership === "OWNED") {
             if (creep.claimController(creep.room.controller) === ERR_NOT_IN_RANGE) {
                 const result = creep.moveTo(creep.room.controller, { swampCost: 1 });
                 console.log(`Result of move function for ${creep.name} is ${result}.`);
             }
-        } else if (empire.roomsToReserve.has(creep.room.name)) {
+        } else if (Memory.rooms[creep.room.name].respawnManager?.desiredOwnership === "RESERVED") {
             if ((creep.room.controller.reservation &&
                 creep.room.controller.reservation.username !== creep.owner.username) ||
                 (creep.room.controller.owner && creep.room.controller.owner.username !== creep.owner.username)) {

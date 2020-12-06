@@ -1,5 +1,39 @@
 // memory extension samples
 
+
+interface RemoteEnergyOperation {
+  id: Id<Source>;
+  limit: number;
+}
+
+interface RaidOperation {
+  room: string;
+  limit: number;
+}
+
+interface ScoutOperation {
+  room: string;
+}
+
+interface CreepInfo {
+  name: string;
+}
+
+interface RespawnManagerMemory {
+  remoteMiningOperations: Array<RemoteEnergyOperation>;
+  remoteBuildingOperations: Array<RemoteEnergyOperation>;
+  remoteRaidOperations: Array<RaidOperation>;
+  scoutOperations: Array<ScoutOperation>;
+}
+
+type DesiredOwnership = "RESERVED" | "OWNED";
+
+interface RespawnManagerMemoryPerRoom {
+  desiredOwnership?: DesiredOwnership;
+  scout?: CreepInfo;
+  claimer?: CreepInfo;
+}
+
 type JobType = "JOB_TYPE_PICKUP" | "JOB_TYPE_WITHDRAW" | "JOB_TYPE_BUILD" | "JOB_TYPE_REFILL" | "JOB_TYPE_REPAIR" | "JOB_TYPE_DISASSEMBLE" | "JOB_TYPE_UPGRADE";
 type JobTargetID = Id<ConstructionSite> | Id<Structure> | Id<Resource>;
 
@@ -20,7 +54,7 @@ interface CreepMemory {
   room: string;
   working: boolean;
   sourceId?: Id<Source>;
-  enemyTarget?: Id<StructureSpawn>;
+  enemyTarget?: Id<StructureSpawn> | Id<StructureInvaderCore>;
   dropId?: Id<StructureStorage> | Id<StructureContainer>;
   currentWorkflow?: WorkflowStep[];
 }
@@ -55,10 +89,11 @@ interface JobSchedulerData {
 }
 
 interface RoomMemory {
-  sources: string;
-  drillMap: string;
-  limits: RoomLimits;
-  jobScheduler: JobSchedulerData; // job scheduler memory
+  sources?: string;
+  drillMap?: string;
+  limits?: RoomLimits;
+  jobScheduler?: JobSchedulerData; // job scheduler memory
+  respawnManager?: RespawnManagerMemoryPerRoom;
 }
 
 interface TestObj {
@@ -71,9 +106,9 @@ interface Memory {
   sources: number[];
   spawning: string;
 
-  remoteMiners: string; // Map<Id<Source>>, number>
-  remoteSources: string; // Set<Id<Source>>
-  remoteUseSources: string;
+  remoteMiners: string | undefined; // Map<Id<Source>>, number>
+  remoteSources: string | undefined; // Set<Id<Source>>
+  remoteUseSources: string | undefined;
 
   roomsToControl: string; // Set<string>
   claimerMap: string; // Map<string, Id<Creep>>
@@ -85,6 +120,8 @@ interface Memory {
   roomSnapshots: string; // Map<string, RoomSnapshot>
 
   test: TestObj;
+
+  respawnManager: RespawnManagerMemory;
 
   log: any;
 }
