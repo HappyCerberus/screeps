@@ -28,22 +28,12 @@ export class RoomSnapshot {
 
 export class Global {
     constructor() {
-        this.roomsToControl = mem.deserializeSet<string>(Memory.roomsToControl);
-        this.roomsToReserve = mem.deserializeSet<string>(Memory.remoteRooms);
         this.cachedRoomInfo = mem.deserializeMap<string, RoomSnapshot>(Memory.roomSnapshots);
-        this.spawning = mem.deserializeSet<string>(Memory.spawning);
     }
 
     Serialize() {
-        Memory.roomsToControl = mem.serializeSet(this.roomsToControl);
         Memory.roomSnapshots = mem.serializeMap(this.cachedRoomInfo);
-        Memory.remoteRooms = mem.serializeSet(this.roomsToReserve);
-        Memory.spawning = mem.serializeSet(this.spawning);
     }
 
-    public roomsToReserve: Set<string>;
-    // roomsToControl is a subset of roomsToReserve
-    public roomsToControl: Set<string>;
     public cachedRoomInfo: Map<string, RoomSnapshot>;
-    public spawning: Set<string>;
 }

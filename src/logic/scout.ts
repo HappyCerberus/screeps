@@ -3,14 +3,7 @@ import * as globals from "../globals"
 import * as common from "./common"
 import * as globalData from "../data/global"
 
-export function run(creep: Creep, empire : globalData.Global, scoutMap: Map<string, Id<Creep>>) {
-    const room = creep.memory.room;
-    const creepId = scoutMap.get(room);
-    if (creepId !== creep.id) {
-        scoutMap.set(room, creep.id);
-        empire.spawning.delete(creep.name);
-    }
-
+export function run(creep: Creep, empire : globalData.Global) {
     const route = Game.map.findRoute(creep.room, creep.memory.room);
     if (route === -2) {
         console.log(`Failed to send scout ${creep.id} to room ${creep.memory.room}`);

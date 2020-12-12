@@ -8,6 +8,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "build": "rollup -c",
     "push-main": "rollup -c --environment DEST:main",
+    "push-season": "rollup -c --environment DEST:mmo-seasonal",
     "push-pserver": "rollup -c --environment DEST:pserver",
     "push-sim": "rollup -c --environment DEST:sim",
     "test": "npm run test-unit",

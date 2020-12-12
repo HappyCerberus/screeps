@@ -11,7 +11,7 @@ import * as claimer from "./logic/claimer"
 import * as remote_builder from "./logic/remote_builder"
 import * as fighter from "./logic/fighter"
 
-import { ensureSourcesHaveDrills, RespawnManager} from "./respawn"
+import { RespawnManager } from "./respawn"
 import { memoryUsage } from "process";
 import { ResourceScheduler } from "./scheduler/resource"
 import { JobScheduler } from "./scheduler/job"
@@ -39,7 +39,6 @@ class SpawnData {
 
 class TimingData {
   constructor() {
-    this["harvester"] = 0;
     this["builder"] = 0;
     this["worker"] = 0;
     this["scout"] = 0;
@@ -52,27 +51,25 @@ class TimingData {
   [key: string]: number;
 }
 
-class ActualTest implements TestObj {
-  constructor(public x: number, public y: string, public z: string[]) {
-
+class CPUMeasurement {
+  constructor() {
+    this.last = Game.cpu.getUsed();
   }
+
+  measure(label: string) {
+    const now = Game.cpu.getUsed();
+    console.log(`⚡ CPU spent on ${label} ${now - this.last}`);
+    this.last = now;
+  }
+
+  private last: number;
 }
 
 // When compiling TS to JS and bundling with rollup, the line numbers and file names in error messages change
 // This utility uses source maps to get the line numbers and file names of the original, TS source code
 export const loop = ErrorMapper.wrapLoop(() => {
   console.log(`Current game tick is ${Game.time}`);
-  if (Memory.test) {
-    console.log(`We have Memory.test : ${JSON.stringify(Memory.test)}`);
-  }
-
-  try {
-    console.log(`Memory.test.x === ${Memory.test.x}`);
-    console.log(`Memory.test as TestObj === ${JSON.stringify(Memory.test as TestObj)}`);
-  } catch (err) {
-    console.log(`Failed to look at memory ${err}`);
-  }
-
+  const cpuLogger = new CPUMeasurement();
   let lastCPUmeasurement = 0;
   let currentCPU = 0;
 
@@ -83,75 +80,27 @@ export const loop = ErrorMapper.wrapLoop(() => {
   //console.log(`>>> DEBUG <<< current tick ${evil.room.memory.jobScheduler.age}`);
 
   const rooms = new Map<string, roomData.RoomData>();
-  for (let spawn of Object.values(Game.spawns)) {
-    // This does not allow for multiple spawns in a room.
-    rooms.set(spawn.room.name, new roomData.RoomData(spawn.room));
+  for (let room of Object.values(Game.rooms)) {
+    rooms.set(room.name, new roomData.RoomData(room));
   }
+
   const empire = new globalData.Global();
+  cpuLogger.measure("de-serialization");
 
   const respawnManager = RespawnManager.create();
-
-  let claimerMap: Map<string, Id<Creep>>;
-  try {
-    claimerMap = new Map<string, Id<Creep>>(JSON.parse(Memory.claimerMap));
-  } catch (err) {
-    claimerMap = new Map<string, Id<Creep>>();
-  }
-
-  let scoutMap: Map<string, Id<Creep>>;
-  try {
-    scoutMap = new Map<string, Id<Creep>>(JSON.parse(Memory.observerMap));
-  } catch (err) {
-    scoutMap = new Map<string, Id<Creep>>();
-  }
-
-  currentCPU = Game.cpu.getUsed();
-  console.log(`[PERFORMANCE] Cpu spent on de-serialization ${currentCPU - lastCPUmeasurement}`);
-  lastCPUmeasurement = currentCPU;
+  respawnManager.run();
+  cpuLogger.measure("respawn logic");
 
   for (let spawn of Object.values(Game.spawns)) {
     ResourceScheduler.initResourceScheduler(spawn.room);
     JobScheduler.initJobScheduler(spawn.room);
   }
-
-  currentCPU = Game.cpu.getUsed();
-  console.log(`[PERFORMANCE] Cpu spent on schedulers initialization ${currentCPU - lastCPUmeasurement}`);
-  lastCPUmeasurement = currentCPU;
-
-  for (let spawn of Object.values(Game.spawns)) {
-    const spawnRoom = rooms.get(spawn.room.name) as roomData.RoomData;
-    ensureSourcesHaveDrills(spawn, spawnRoom.sources, spawnRoom.drillMap, empire.spawning);
-
-    respawnManager.ensureRoomHasWorkers(spawn.room);
-  }
-
-  currentCPU = Game.cpu.getUsed();
-  console.log(`[PERFORMANCE] Cpu spent on respawning logic ${currentCPU - lastCPUmeasurement}`);
-  lastCPUmeasurement = currentCPU;
-
-  const sourceSpawn = Object.values(Game.spawns)[0];
-  respawnManager.ensureRoomsHaveScouts();
-  respawnManager.ensureControllersAreMine();
-
-  currentCPU = Game.cpu.getUsed();
-  console.log(`[PERFORMANCE] Cpu spent on room control logic ${currentCPU - lastCPUmeasurement}`);
-  lastCPUmeasurement = currentCPU;
-
-  respawnManager.ensureRemoteRoomsHaveBuilders();
-  respawnManager.ensureRemoteRoomsHaveMiners();
-  respawnManager.ensureRemoteRoomsHaveFighters();
-
-  currentCPU = Game.cpu.getUsed();
-  console.log(`[PERFORMANCE] Cpu spent on remote operations ${currentCPU - lastCPUmeasurement}`);
-  lastCPUmeasurement = currentCPU;
+  cpuLogger.measure("initializing schedulers");
 
   for (let spawn of Object.values(Game.spawns)) {
     defendRoom(spawn.room.name);
   }
-
-  currentCPU = Game.cpu.getUsed();
-  console.log(`[PERFORMANCE] Cpu spent room defense ${currentCPU - lastCPUmeasurement}`);
-  lastCPUmeasurement = currentCPU;
+  cpuLogger.measure("room defense");
 
   let timing = new TimingData();
   let intermediateCPU = currentCPU;
@@ -172,7 +121,7 @@ export const loop = ErrorMapper.wrapLoop(() => {
       case "drill":
         intermediateCPU = Game.cpu.getUsed();
         const room = rooms.get(creep.room.name) as roomData.RoomData;
-        drill.run(creep, empire, room.drillMap);
+        drill.run(creep, empire);
         timing["drill"] += Game.cpu.getUsed() - intermediateCPU;
         break;
       case "worker":
@@ -187,7 +136,7 @@ export const loop = ErrorMapper.wrapLoop(() => {
         break;
       case "scout":
         intermediateCPU = Game.cpu.getUsed();
-        scout.run(creep, empire, scoutMap);
+        scout.run(creep, empire);
         timing["scout"] += Game.cpu.getUsed() - intermediateCPU;
         break;
       case "remote_builder":
@@ -197,7 +146,7 @@ export const loop = ErrorMapper.wrapLoop(() => {
         break;
       case "claimer":
         intermediateCPU = Game.cpu.getUsed();
-        claimer.run(creep, empire, claimerMap);
+        claimer.run(creep, empire);
         timing["claimer"] += Game.cpu.getUsed() - intermediateCPU;
         break;
       case "disassembler":
@@ -216,10 +165,7 @@ export const loop = ErrorMapper.wrapLoop(() => {
   for (let key of Object.keys(timing)) {
     console.log(`By role CPU spending for ${key} is ${timing[key]}`);
   }
-
-  currentCPU = Game.cpu.getUsed();
-  console.log(`[PERFORMANCE] CPU spent on creep logic ${currentCPU - lastCPUmeasurement}`);
-  lastCPUmeasurement = currentCPU;
+  cpuLogger.measure("creep logic");
 
 
   // Automatically delete memory of missing creeps
@@ -230,20 +176,9 @@ export const loop = ErrorMapper.wrapLoop(() => {
     }
   }
 
-  Memory.observerMap = JSON.stringify([...scoutMap]);
-  Memory.claimerMap = JSON.stringify([...claimerMap]);
-
   empire.Serialize();
-
-  for (let spawn of Object.values(Game.spawns)) {
-    const spawnRoom = rooms.get(spawn.room.name) as roomData.RoomData;
-    spawnRoom.Serialize();
-  }
   //fancyJobScheduler.Serialize();
-
-  currentCPU = Game.cpu.getUsed();
-  console.log(`[PERFORMANCE] Cpu spent on serialization ${currentCPU - lastCPUmeasurement}`);
-  lastCPUmeasurement = currentCPU;
+  cpuLogger.measure("serialization");
 
   if (Game.shard.name !== "shardSeason" && Game.cpu.bucket > 9000) {
     Game.cpu.generatePixel();

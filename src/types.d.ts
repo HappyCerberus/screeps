@@ -28,10 +28,15 @@ interface RespawnManagerMemory {
 
 type DesiredOwnership = "RESERVED" | "OWNED";
 
+interface DrillMapping {
+  [key: string]: CreepInfo;
+}
+
 interface RespawnManagerMemoryPerRoom {
   desiredOwnership?: DesiredOwnership;
   scout?: CreepInfo;
   claimer?: CreepInfo;
+  drills?: DrillMapping;
 }
 
 type JobType = "JOB_TYPE_PICKUP" | "JOB_TYPE_WITHDRAW" | "JOB_TYPE_BUILD" | "JOB_TYPE_REFILL" | "JOB_TYPE_REPAIR" | "JOB_TYPE_DISASSEMBLE" | "JOB_TYPE_UPGRADE";
@@ -62,7 +67,6 @@ interface CreepMemory {
 interface RoomLimits {
   creepsWorkers?: number;
   creepsBuilders?: number;
-  creepsUpgraders?: number;
 
   jobsUpgrade?: number;
   jobsRepair?: number;
@@ -89,38 +93,16 @@ interface JobSchedulerData {
 }
 
 interface RoomMemory {
-  sources?: string;
-  drillMap?: string;
+  sources?: Array<Id<Source>>;
   limits?: RoomLimits;
   jobScheduler?: JobSchedulerData; // job scheduler memory
   respawnManager?: RespawnManagerMemoryPerRoom;
-}
 
-interface TestObj {
-  x: number;
-  y: string;
 }
 
 interface Memory {
   uuid: number;
-  sources: number[];
-  spawning: string;
-
-  remoteMiners: string | undefined; // Map<Id<Source>>, number>
-  remoteSources: string | undefined; // Set<Id<Source>>
-  remoteUseSources: string | undefined;
-
-  roomsToControl: string; // Set<string>
-  claimerMap: string; // Map<string, Id<Creep>>
-
-  // TODO: refactor, so this is called roomsToReserve
-  remoteRooms: string; // Set<string>
-  observerMap: string; // Map<string, Id<Creep>>
-
   roomSnapshots: string; // Map<string, RoomSnapshot>
-
-  test: TestObj;
-
   respawnManager: RespawnManagerMemory;
 
   log: any;

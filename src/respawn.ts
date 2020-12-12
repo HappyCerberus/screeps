@@ -37,7 +37,21 @@ export class RespawnManager {
         return new RespawnManager(Memory.respawnManager, Memory.rooms);
     }
 
-    ensureRemoteRoomsHaveBuilders() {
+    run() {
+        for (let room of Object.values(Game.rooms)) {
+            this.ensureSourcesHaveDrills(room);
+            this.ensureRoomHasWorkers(room);
+        }
+
+        this.ensureRoomsHaveScouts();
+        this.ensureControllersAreMine();
+
+        this.ensureRemoteRoomsHaveBuilders();
+        this.ensureRemoteRoomsHaveMiners();
+        this.ensureRemoteRoomsHaveFighters();
+    }
+
+    private ensureRemoteRoomsHaveBuilders() {
         for (const target of this.memory.remoteBuildingOperations) {
             const source = Game.getObjectById(target.id) as Source;
             if (!source) {
@@ -53,7 +67,6 @@ export class RespawnManager {
             if (!this.hasEnoughCreepsOnSource(source, role, target.limit)) {
                 try {
                     this.spawnSingleCreep(spawn, role, { role: role, room: spawn.room.name, working: false, sourceId: source.id } as CreepMemory);
-                    spawn.spawning = {} as Spawning;
                 } catch (err) {
                     console.log(err);
                 }
@@ -61,7 +74,7 @@ export class RespawnManager {
         }
     }
 
-    ensureRemoteRoomsHaveMiners() {
+    private ensureRemoteRoomsHaveMiners() {
         for (const target of this.memory.remoteMiningOperations) {
             const source = Game.getObjectById(target.id);
             if (!source) {
@@ -78,7 +91,6 @@ export class RespawnManager {
             if (!this.hasEnoughCreepsOnSource(source, role, target.limit)) {
                 try {
                     this.spawnSingleCreep(spawn, role, { role: role, room: spawn.room.name, working: false, sourceId: source.id, dropId: spawn.room.storage.id } as CreepMemory);
-                    spawn.spawning = {} as Spawning;
                 } catch (err) {
                     console.log(err);
                 }
@@ -86,7 +98,7 @@ export class RespawnManager {
         }
     }
 
-    ensureRemoteRoomsHaveFighters() {
+    private ensureRemoteRoomsHaveFighters() {
         for (const target of this.memory.remoteRaidOperations) {
             const spawn = this.closestSpawn(target.room);
             if (!spawn) {
@@ -98,16 +110,14 @@ export class RespawnManager {
                 try {
                     this.spawnSingleCreep(spawn, role, { role: role, room: target.room, working: false } as CreepMemory,
                         this.makeDynamicallySizedFighter(spawn.room.energyCapacityAvailable));
-                    spawn.spawning = {} as Spawning;
                 } catch (err) {
                     console.log(err);
                 }
             }
-
         }
     }
 
-    ensureRoomHasWorkers(room: Room) {
+    private ensureRoomHasWorkers(room: Room) {
         if (this.lockedDownRooms.has(room.name))
             return;
 
@@ -127,14 +137,14 @@ export class RespawnManager {
             try {
                 this.spawnSingleCreep(spawns[0], role, { role: role, room: room.name, working: true } as CreepMemory,
                     this.makeDynamicallySizedWorker(room.energyCapacityAvailable));
-                spawns[0].spawning = {} as Spawning;
+
             } catch (err) {
                 console.log(err);
             }
         }
     }
 
-    ensureRoomsHaveScouts() {
+    private ensureRoomsHaveScouts() {
         for (const target of this.memory.scoutOperations) {
             const spawn = this.closestSpawn(target.room);
             if (!spawn) {
@@ -159,7 +169,7 @@ export class RespawnManager {
         }
     }
 
-    ensureControllersAreMine() {
+    private ensureControllersAreMine() {
         for (let roomName of Object.keys(this.roomsMemory)) {
             const rm = this.roomsMemory[roomName].respawnManager;
             if (rm?.desiredOwnership !== "RESERVED" && rm?.desiredOwnership !== "OWNED") continue;
@@ -187,6 +197,42 @@ export class RespawnManager {
                 } catch (err) {
                     console.log(err);
                 }
+            }
+        }
+    }
+
+    private ensureSourcesHaveDrills(room: Room) {
+        if (this.lockedDownRooms.has(room.name) ||
+            !room.memory.sources)
+            return;
+
+        const role = "drill";
+        for (let source of room.memory.sources) {
+            if (this.hasDrillForSource(room, source)) continue;
+            let spawns = room.find(FIND_MY_SPAWNS, {
+                filter: (spawn: StructureSpawn) => {
+                    return !this.isSpawnBusy(spawn);
+                }
+            });
+            if ((!spawns) || (spawns.length === 0)) {
+                return;
+            }
+
+            try {
+                const name = this.spawnSingleCreep(spawns[0], role, { role: role, room: room.name, working: true, sourceId: source } as CreepMemory,
+                    this.makeDynamicallySizedDrill(room.energyCapacityAvailable));
+                if (!name) continue;
+
+                let roomMemory = Memory.rooms[room.name];
+                if (!roomMemory.respawnManager) {
+                    roomMemory.respawnManager = {};
+                }
+                if (!roomMemory.respawnManager.drills) {
+                    roomMemory.respawnManager.drills = {} as DrillMapping;
+                }
+                roomMemory.respawnManager.drills[source] = { name: name };
+            } catch (err) {
+                console.log(err);
             }
         }
     }
@@ -228,6 +274,13 @@ export class RespawnManager {
             }
         }
         return count >= minimum;
+}
+
+    private hasDrillForSource(room: Room, sourceId: Id<Source>): boolean {
+        const rm = this.roomsMemory[room.name].respawnManager;
+        if (!rm) return false;
+        if (!rm.drills) return false;
+        return this.creepIsAlive(rm.drills[sourceId]);
     }
 
     private hasEnoughCreepsTargetingRoom(room: string, role: string, minimum: number): boolean {
@@ -316,6 +369,16 @@ export class RespawnManager {
         return arrayOfBodyParts;
     }
 
+    private makeDynamicallySizedDrill(energyCap: number): Array<BodyPartConstant> {
+        const maxPieces = Math.min(Math.floor((energyCap - 50) / 100), 5);
+        let arrayOfBodyParts = new Array<BodyPartConstant>();
+        arrayOfBodyParts.push(MOVE);
+        for (let i = 0; i < maxPieces; i++) {
+            arrayOfBodyParts.push(WORK);
+        }
+        return arrayOfBodyParts;
+    }
+
     private isSpawnBusy(spawn: StructureSpawn) {
         return this.lockedDownRooms.has(spawn.room.name) ||
             this.busySpawns.has(spawn.name) || spawn.spawning;
@@ -343,15 +406,11 @@ export class RespawnManager {
     private busySpawns: Set<string>;
 }
 
-class RoleDict{
+class RoleDict {
     [role: string]: BodyPartConstant[];
 }
 
 const roles: RoleDict = {
-    "harvester": [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
-//    "upgrader": [WORK, CARRY, MOVE],
-//    "builder": [WORK, CARRY, MOVE],
-    "upgrader": [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
     "builder": [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE],
     "drill": [WORK, WORK, WORK, WORK, WORK, MOVE],
     "sweeper": [WORK, CARRY, MOVE],
@@ -361,121 +420,5 @@ const roles: RoleDict = {
     "claimer": [MOVE, CLAIM],
     "scout": [MOVE],
 };
-
-export function ensureSourcesHaveDrills(spawn: StructureSpawn,  sources: Set<Id<Source>>, drillMap: Map<string, Id<Creep>>, spawning: Set<string>) {
-    // Can't do anything since the spawner is busy.
-    if (spawn.spawning) {
-        return;
-    }
-
-    /*
-     * Check if each of the sources has a live drill assigned.
-     * If not, spawn a new drill.
-     */
-    for (const sourceId of sources) {
-        const creepId = drillMap.get(sourceId.toString());
-        if (creepId !== undefined) {
-            const drill = Game.getObjectById(creepId);
-            if (drill !== null) {
-                continue;
-            }
-        }
-
-        const drillName = "Drill_" + sourceId.toString();
-        if (spawning.has(drillName)) continue;
-
-        const maxPieces = Math.min(Math.floor((spawn.room.energyCapacityAvailable - 50)/100), 5);
-        let arrayOfBodyParts = new Array<BodyPartConstant>();
-        arrayOfBodyParts.push(MOVE);
-        for (let i = 0; i < maxPieces; i++) {
-            arrayOfBodyParts.push(WORK);
-        }
-
-        if (spawn.spawnCreep(arrayOfBodyParts, drillName, { memory: { role: "drill", room: spawn.room.name, working: true, sourceId: sourceId } }) !== OK) {
-            console.log(`Failed to schedule spawn of drill ${drillName}.`);
-        } else {
-            // If we succeeded to schedule the spawn, prevent successive attempts.
-            spawning.add(drillName);
-            break;
-        }
-    }
-}
-
-
-
-export function ensureControllersAreOwned(spawn: StructureSpawn, empire: globalData.Global, controllerMap: Map<string, Id<Creep>>) {
-    let rooms = empire.roomsToControl;
-    // Can't do anything since the spawner is busy.
-    if (spawn.spawning) {
-        return;
-    }
-
-    /*
-     * Check if each of the sources has a live drill assigned.
-     * If not, spawn a new drill.
-     */
-    for (const room of rooms) {
-        if (!Game.rooms[room]) continue;
-        if (!Game.rooms[room].controller) continue;
-        if (Game.rooms[room].controller?.my) continue;
-
-        const creepId = controllerMap.get(room);
-        if (creepId !== undefined) {
-            const claimer = Game.getObjectById(creepId);
-            if (claimer !== null) continue;
-        }
-
-        const claimerName = "Claimer_" + room;
-        if (empire.spawning.has(claimerName)) continue;
-
-        if (spawn.spawnCreep(roles["claimer"], claimerName, { memory: { role: "claimer", room: room, working: true } }) !== OK) {
-            console.log(`Failed to schedule spawn of drill ${claimerName}.`);
-        } else {
-            // If we succeeded to schedule the spawn, prevent successive attempts.
-            empire.spawning.add(claimerName);
-            break;
-        }
-    }
-}
-
-export function remoteSourceHasFighters(spawn: StructureSpawn, minimum: number, room: string) {
-    const role = "fighter";
-
-    let count = 0;
-    for (const [key, value] of Object.entries(Memory.creeps)) {
-        if (value.role !== role) continue;
-        if (value.room === room) {
-            count++;
-        }
-    }
-
-    const maxPieces = Math.min(Math.floor(spawn.room.energyCapacityAvailable / 190), 8);
-    let arrayOfBodyParts = new Array<BodyPartConstant>();
-    for (let i = 0; i < maxPieces; i++) {
-        arrayOfBodyParts.push(TOUGH);
-    }
-    for (let i = 0; i < maxPieces; i++) {
-        arrayOfBodyParts.push(MOVE);
-        arrayOfBodyParts.push(MOVE);
-        arrayOfBodyParts.push(ATTACK);
-    }
-
-    if (count < minimum) {
-        const newName = "Creep_Fighter_" + Game.time;
-        switch (spawn.spawnCreep(arrayOfBodyParts, newName, { memory: { role: role, room: room, working: false } })) {
-            case OK:
-                console.log(`Spawning new creep with role ${role} named ${newName}`);
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-
-
-
-
-
 
 

@@ -3,7 +3,7 @@ import * as globals from "../globals"
 import * as common from "./common"
 import * as globalData from "../data/global"
 
-export function run(creep: Creep, empire: globalData.Global, claimerMap: Map<string, Id<Creep>>) {
+export function run(creep: Creep, empire: globalData.Global) {
     const room = creep.memory.room;
     const route = Game.map.findRoute(creep.room, creep.memory.room);
     if (route === -2) {
