@@ -15,8 +15,7 @@ import { RespawnManager } from "./respawn"
 import { memoryUsage } from "process";
 import { ResourceScheduler } from "./scheduler/resource"
 import { JobScheduler } from "./scheduler/job"
-import * as fancyScheduler from "./scheduler/fancy_job"
-//import *  as globals from "./globals"
+import * as fancy from "./scheduler/fancy_job_scheduler"
 
 import * as roomData from "./data/room"
 import * as globalData from "./data/global"
@@ -70,14 +69,14 @@ class CPUMeasurement {
 export const loop = ErrorMapper.wrapLoop(() => {
   console.log(`Current game tick is ${Game.time}`);
   const cpuLogger = new CPUMeasurement();
-  let lastCPUmeasurement = 0;
   let currentCPU = 0;
 
-  const evil = Game.spawns["Evil"];
-
-  //fancyScheduler.JobScheduler.initSchedulerMemory(evil.room.memory);
-  //const fancyJobScheduler = new fancyScheduler.JobScheduler(evil.room.memory.jobScheduler, evil.room) ;
-  //console.log(`>>> DEBUG <<< current tick ${evil.room.memory.jobScheduler.age}`);
+  const fancySchedulers = new Array<fancy.FancyJobScheduler>();
+  if (Memory.chunks)
+  for (let chunkName of Object.keys(Memory.chunks)) {
+    fancySchedulers.push(fancy.FancyJobScheduler.createScheduler(chunkName));
+  }
+  cpuLogger.measure("Fancy Scheduler initialization.");
 
   const rooms = new Map<string, roomData.RoomData>();
   for (let room of Object.values(Game.rooms)) {

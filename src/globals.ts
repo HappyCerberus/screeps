@@ -73,3 +73,32 @@ global.changeRoomOwnership = (room: string, ownership: DesiredOwnership) => {
     }
     Memory.rooms[room].respawnManager = { desiredOwnership: ownership, ...Memory.rooms[room].respawnManager };
 }
+
+global.addRoomToChunk = (room: string, chunk: string) => {
+    if (!Memory.chunks) {
+        Memory.chunks = {};
+    }
+
+    if (!Memory.chunks[chunk]) {
+        Memory.chunks[chunk] = { rooms: [room] };
+        return;
+    }
+
+    if (Memory.chunks[chunk].rooms.includes(room)) return;
+
+    Memory.chunks[chunk] = { rooms: [room, ...Memory.chunks[chunk].rooms] };
+}
+
+global.removeRoomFromChunk = (room: string, chunk: string) => {
+    if (!Memory.chunks || !Memory.chunks[chunk]) {
+        return;
+    }
+
+    const rooms = Memory.chunks[chunk].rooms;
+    for (let i = 0; i < rooms.length; i++) {
+        if (rooms[i] === room) {
+            rooms.splice(i, 1);
+            return;
+        }
+    }
+}

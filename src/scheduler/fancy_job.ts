@@ -1,3 +1,5 @@
+/*
+
 import * as globals from "../globals"
 import * as mem from "../data/lib"
 import { ControllerStateInfo } from "data/global";
@@ -173,18 +175,6 @@ export class Job implements JobInterface {
     }
 }
 
-/*
-data blob:
-  type: JobType;
-  target: JobTargetID;
-  creeps: Array<string>;
-
-Array<Blob>
-Array<Job> - Job === Blob + methods
-
-
-*/
-
 class JobSchedulerDataImpl implements JobSchedulerData {
     constructor(public age: number,
         public buildJobs: Array<Job>,
@@ -211,14 +201,6 @@ class JobSchedulerDataImpl implements JobSchedulerData {
 }
 
 export class JobScheduler extends JobSchedulerDataImpl {
-    constructor(data: JobSchedulerDataImpl, private room: Room) {
-        super(data.age, data.buildJobs, data.refillJobs, data.repairJobs, data.disassemblyJobs, data.upgradeJobs);
-    }
-
-    Serialize() {
-        this.room.memory.jobScheduler = new JobSchedulerDataImpl(this.age, this.buildJobs, this.disassemblyJobs, this.refillJobs, this.repairJobs, this.upgradeJobs);
-    }
-
     onCreepAvailable(creep: Creep) {
         if (!creep.room.storage)
             return;
@@ -274,185 +256,5 @@ export class JobScheduler extends JobSchedulerDataImpl {
             }
         }
     }
-
-    static initSchedulerMemory(roomMemory: RoomMemory) {
-        if (!roomMemory.jobScheduler) {
-            roomMemory.jobScheduler = {
-                age: 0,
-                buildJobs: new Array<Job>(),
-                refillJobs: new Array<Job>(),
-                repairJobs: new Array<Job>(),
-                disassemblyJobs: new Array<Job>(),
-                upgradeJobs: new Array<Job>()
-            };
-        }
-    }
-
-
-
-    tick() {
-        // Refresh the list of entities every 1000 ticks.
-        if (this.age % 10 === 0) {
-            this.refreshBuildJobs();
-            this.refreshStructureJobs();
-        }
-        this.age++;
-    }
-
-    refreshBuildJobs() {
-        const doneEntities = new Set<JobTargetID>();
-        const newJobs = new Array<Job>();
-        for (let job of this.buildJobs) {
-            if (Game.getObjectById(job.target) !== null) {
-                newJobs.push(job);
-                doneEntities.add(job.target);
-            } else {
-                for (let creepName of job.creeps) {
-                    if (Memory.creeps[creepName]) {
-                        Memory.creeps[creepName].currentWorkflow = undefined;
-                    } else {
-                        console.log(`🔥 Inconsistent state, creep ${creepName} should have a workflow set.`)
-                    }
-                }
-            }
-        }
-
-        const sites = this.room.find(FIND_MY_CONSTRUCTION_SITES, {
-            filter: (site: ConstructionSite) => {
-                return !doneEntities.has(site.id);
-            }
-        });
-        for (let site of sites) {
-            newJobs.push(new Job("JOB_TYPE_BUILD", site.id, new Array<string>()));
-        }
-        this.buildJobs = newJobs;
-    }
-
-    refreshStructureJobs() {
-        const doneEntities = new Set<JobTargetID>();
-        const newRefillJobs = new Array<Job>();
-        for (let job of this.refillJobs) {
-            if (Game.getObjectById(job.target) !== null) {
-                newRefillJobs.push(job);
-                doneEntities.add(job.target);
-            } else {
-                for (let creepName of job.creeps) {
-                    if (Memory.creeps[creepName]) {
-                        Memory.creeps[creepName].currentWorkflow = undefined;
-                    } else {
-                        console.log(`🔥 Inconsistent state, creep ${creepName} should have a workflow set.`)
-                    }
-                }
-            }
-        }
-        const newRepairJobs = Array<Job>();
-        for (let job of this.repairJobs) {
-            if (Game.getObjectById(job.target) !== null) {
-                newRepairJobs.push(job);
-                doneEntities.add(job.target);
-            } else {
-                for (let creepName of job.creeps) {
-                    if (Memory.creeps[creepName]) {
-                        Memory.creeps[creepName].currentWorkflow = undefined;
-                    } else {
-                        console.log(`🔥 Inconsistent state, creep ${creepName} should have a workflow set.`)
-                    }
-                }
-            }
-        }
-        const newDisassemblyJobs = Array<Job>();
-        for (let job of this.disassemblyJobs) {
-            if (Game.getObjectById(job.target) !== null) {
-                newDisassemblyJobs.push(job);
-                doneEntities.add(job.target);
-            } else {
-                for (let creepName of job.creeps) {
-                    if (Memory.creeps[creepName]) {
-                        Memory.creeps[creepName].currentWorkflow = undefined;
-                    } else {
-                        console.log(`🔥 Inconsistent state, creep ${creepName} should have a workflow set.`)
-                    }
-                }
-            }
-        }
-        const newUpgradeJobs = Array<Job>();
-        for (let job of this.upgradeJobs) {
-            if (Game.getObjectById(job.target) !== null) {
-                newUpgradeJobs.push(job);
-                doneEntities.add(job.target);
-            } else {
-                for (let creepName of job.creeps) {
-                    if (Memory.creeps[creepName]) {
-                        Memory.creeps[creepName].currentWorkflow = undefined;
-                    } else {
-                        console.log(`🔥 Inconsistent state, creep ${creepName} should have a workflow set.`)
-                    }
-                }
-            }
-        }
-
-        this.room.find(FIND_STRUCTURES, {
-            filter: (building: Structure) => {
-                if (doneEntities.has(building.id)) return;
-
-                switch (building.structureType) {
-                    case STRUCTURE_EXTENSION:
-                    case STRUCTURE_SPAWN:
-                    case STRUCTURE_TOWER:
-                        // refill & repair structures / disassembly for enemies
-                        const refillBuilding = building as StructureExtension | StructureTower | StructureSpawn;
-                        if (refillBuilding.owner && refillBuilding.owner.username === globals.me) {
-                            newRefillJobs.push(new Job("JOB_TYPE_REFILL", refillBuilding.id));
-                            newRepairJobs.push(new Job("JOB_TYPE_REPAIR", refillBuilding.id));
-                        } else if (building.structureType === STRUCTURE_SPAWN) {
-                            newDisassemblyJobs.push(new Job("JOB_TYPE_DISASSEMBLE", (building as StructureSpawn).id));
-                        }
-                        break;
-                    case STRUCTURE_WALL:
-                    case STRUCTURE_CONTAINER:
-                    case STRUCTURE_ROAD:
-                        // neutral structures that we actually want to repair
-                        if (this.room.controller &&
-                            ((this.room.controller.owner?.username === globals.me) ||
-                                (this.room.controller.reservation && this.room.controller.reservation?.username === globals.me))) {
-                            newRepairJobs.push(new Job("JOB_TYPE_REPAIR", building.id));
-                        }
-                        break;
-                    case STRUCTURE_CONTROLLER:
-                        if (this.room.controller && (this.room.controller.owner?.username === globals.me)) {
-                            newUpgradeJobs.push(new Job("JOB_TYPE_UPGRADE", this.room.controller.id));
-                        }
-                        break;
-                    case STRUCTURE_RAMPART:
-                    case STRUCTURE_LINK:
-                    case STRUCTURE_STORAGE:
-                    case STRUCTURE_OBSERVER:
-                    case STRUCTURE_POWER_SPAWN:
-                    case STRUCTURE_EXTRACTOR:
-                    case STRUCTURE_LAB:
-                    case STRUCTURE_TERMINAL:
-                    case STRUCTURE_NUKER:
-                    case STRUCTURE_FACTORY:
-                        const ownedBuilding = building as OwnedStructure;
-                        if (ownedBuilding.my) {
-                            newRepairJobs.push(new Job("JOB_TYPE_REPAIR",ownedBuilding.id));
-                        }
-                        break;
-                    case STRUCTURE_KEEPER_LAIR:
-                    case STRUCTURE_PORTAL:
-                    case STRUCTURE_INVADER_CORE:
-                    case STRUCTURE_POWER_BANK:
-                        /* noop */
-                        break;
-                    default:
-                        console.log(`[ERROR] Unexpected structure type found: "${building.structureType}".`);
-                        break;
-                }
-            }
-        });
-        this.repairJobs = newRepairJobs;
-        this.refillJobs = newRefillJobs;
-        this.upgradeJobs = newUpgradeJobs;
-        this.disassemblyJobs = newDisassemblyJobs;
-    }
 }
+*/

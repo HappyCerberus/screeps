@@ -359,7 +359,7 @@ export class RespawnManager {
     }
 
     private makeDynamicallySizedWorker(energyCap: number): Array<BodyPartConstant> {
-        const maxPieces = Math.min(Math.floor(energyCap / 200), 5);
+        const maxPieces = Math.min(Math.floor(energyCap / 200), 10);
         let arrayOfBodyParts = new Array<BodyPartConstant>();
         for (let i = 0; i < maxPieces; i++) {
             arrayOfBodyParts.push(MOVE);

@@ -4,41 +4,15 @@
 
 ## Goals
 
-- separate the code into smaller chunks (out of the massive main.ts)
-- maybe document some of the things
-- have a memory member on each of my classes
-  - this will be a reference into the memory
-- cleanup all the leftovers from old schedulers and stuff
-- visual flare
+Switch over to the workflow style workers.
 
-```
-class X {
-    constructor(private memory: XMemory) {
-        // inject methods onto memory
-    }
+1. smarter integration with resource scheduler, where the creep does not switch targets ever tick, but instead generates a two step workflow to go to a place and takes resources from there (dropped resource, or storage/container/link)
+2. make it still work with the old worker logic, where if not full of energy and not working -> go take more resources, otherwise go do job
+3. after this is working, switch over the actual job logic to the new FancyJobScheduler
 
-}
+Finally extend the object prototypes / interfaces with custom stuff.
 
-let x : X;
-x.memory.something
-```
-
-room
-- resource available
-- spawn1, spawn2
-
-SpawnManager - per room
-
-room_can_spawn() : boolean {
-  !lock_down && !all_spawns_busy
-}
-
-if (!all_spawns_busy && resources < NEED) lock_down_room;
-if (!spawn.busy) { unlock & spawn }
-
-spawn_p0
-spawn_p1
-spawn_p2
+1. worker isFull(), isEmpty()...
 
 ## Notes
 

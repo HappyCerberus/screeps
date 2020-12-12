@@ -42,11 +42,10 @@ interface RespawnManagerMemoryPerRoom {
 type JobType = "JOB_TYPE_PICKUP" | "JOB_TYPE_WITHDRAW" | "JOB_TYPE_BUILD" | "JOB_TYPE_REFILL" | "JOB_TYPE_REPAIR" | "JOB_TYPE_DISASSEMBLE" | "JOB_TYPE_UPGRADE";
 type JobTargetID = Id<ConstructionSite> | Id<Structure> | Id<Resource>;
 
-interface JobInterface {
+interface JobData {
   type: JobType;
   target: JobTargetID;
-  creeps: Array<string>;
-  needsDoing(): boolean;
+  creeps: string[];
 }
 
 interface WorkflowStep {
@@ -84,27 +83,35 @@ interface JobSchedulerState {
 }
 
 interface JobSchedulerData {
-  age: number;
-  buildJobs: Array<JobInterface>;
-  refillJobs: Array<JobInterface>;
-  repairJobs: Array<JobInterface>;
-  disassemblyJobs: Array<JobInterface>;
-  upgradeJobs: Array<JobInterface>;
+  cacheAge: number;
+  buildJobs?: JobData[];
+  refillJobs?: JobData[];
+  repairJobs?: JobData[];
+  disassemblyJobs?: JobData[];
+  upgradeJobs?: JobData[];
 }
 
 interface RoomMemory {
   sources?: Array<Id<Source>>;
   limits?: RoomLimits;
-  jobScheduler?: JobSchedulerData; // job scheduler memory
   respawnManager?: RespawnManagerMemoryPerRoom;
 
+}
+
+interface ChunkData {
+  rooms: string[];
+  jobs?: JobSchedulerData;
+}
+
+interface Chunks {
+  [key: string]: ChunkData;
 }
 
 interface Memory {
   uuid: number;
   roomSnapshots: string; // Map<string, RoomSnapshot>
   respawnManager: RespawnManagerMemory;
-
+  chunks: Chunks;
   log: any;
 }
 
